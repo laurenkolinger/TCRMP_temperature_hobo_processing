@@ -1,0 +1,66 @@
+TCHB20:
+  global_attributes:
+    title: Benthic temperature record from Hind Bank, St. Thomas, USVI
+    institution: University of the Virgin Islands
+    location: Hind Bank
+    depth: 20 m
+    source: TCHB20 Sensor Network
+    coordinates: 18.20217, -65.00158
+    geospatial_lat_max: '18.20217'
+    geospatial_lat_min: '18.20217'
+    geospatial_lon_max: '-65.00158'
+    geospatial_lon_min: '-65.00158'
+    site_description: Thermistor string deployment at a minimum of 20m depth. Line
+      swing can cause deepening of sensor.
+    sub_code: HBE20
+    cdm_data_type: TimeSeries
+    Conventions: CF-1.6
+    summary: Time series of benthic temperature recorded at Hind Bank, USVI
+    project: The United States Virgin Islands Territorial Coral Reef Monitoring Program
+    funding: Department of Planning and Natural Resources, NOAA Coral Reef Conservation
+      Program
+    contact: Tyler B. Smith
+    contact_email: tsmith@uvi.edu
+    device_name: HOBO U22-001 Water Temperature
+    creator_name: Tyler B. Smith
+    creator_email: tsmith@uvi.edu
+    creator_type: person
+    featureType: timeSeries
+    processing_level: Data provided as is with no expressed or implied assurance of
+      quality assurance or quality control.
+    naming_authority: https://www.uvi.edu/
+    license: This data may be redistributed and used without restriction. Data provided
+      as is with no expressed or implied assurance of quality assurance or quality
+      control
+    id: TCHB20
+  variable_attributes:
+    Number:
+      long_name: Sequential number of the datum
+      units: '1'
+    Time:
+      standard_name: time
+      long_name: Time of measurement
+      units: seconds since 1970-01-01T00:00:00Z
+      calendar: gregorian
+      comment: Time in seconds since the Unix epoch
+    Temperature:
+      standard_name: sea_water_temperature
+      long_name: Water Temperature
+      units: degree_Celsius
+      comment: Water temperature recorded at site depth
+    Depth:
+      standard_name: depth
+      long_name: Depth below sea surface
+      units: m
+      positive: down
+      axis: Z
+    latitude:
+      standard_name: latitude
+      long_name: Latitude
+      units: degrees_north
+      comment: site latitude
+    longitude:
+      standard_name: longitude
+      long_name: Longitude
+      units: degrees_east
+      comment: site longitude

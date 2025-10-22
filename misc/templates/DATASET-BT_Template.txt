@@ -1,0 +1,112 @@
+DATASET Description Metadata  
+TCRMP [Version: June 2011] – Benthic Temperature Record  
+Site: {{SITE_FULL_NAME}}
+Period: {{START_DATE}} – {{END_DATE}}
+
+---
+
+Originating PI
+Tyler B. Smith  
+Center for Marine and Environmental Studies  
+University of the Virgin Islands  
+2 John Brewers Bay  
+Saint Thomas, VI 00802, USA  
+Phone: 1-(340)-693-1394  
+Email: tsmith@uvi.edu
+
+---
+
+Ocean Data Manager
+Vanessa McKague  
+Center for Marine and Environmental Studies  
+University of the Virgin Islands  
+2 John Brewers Bay  
+Saint Thomas, VI 00802, USA  
+Phone: 1-(340)-693-1378  
+Email: vwright@uvi.edu
+
+---
+
+Dataset Name
+{{DATASET_FILENAME}}
+
+---
+
+Dataset Description
+
+Project:  
+United States Virgin Islands Territorial Coral Reef Monitoring Program  
+
+Funding:  
+Department of Planning and Natural Resources, NOAA Coral Reef Conservation Program  
+
+Location:  
+Coordinates: {{LATITUDE}}, {{LONGITUDE}}  
+Depth: {{DEPTH}}
+
+---
+
+Parameter Names, Definitions, and Units
+| Parameter | Definition | Units |
+|------------|-------------|-------|
+| Number | Sequential number of the datum | — |
+| Date Time UTC-4 | Date and time in UTC-4 | — |
+| Temperature | Temperature | °C |
+
+---
+
+Sampling and Analytical Methodology
+Sensor: HOBO U22-001 Water Temp (Onset Computer Corporation, Bourne, MA, USA)  
+Serial Numbers: {{SERIAL_NUMBERS}}
+
+{{SITE_DESCRIPTION}}
+{{SENSOR_DEPLOYMENT_INFO}}
+
+---
+
+Data Processing
+Data were offloaded with a portable base station to a laptop.  
+Exported to Microsoft Excel and visually inspected for unusual deviations.  
+Data taken outside deployment periods were removed.  
+Timestamps adjusted to UTC-4.  
+{{MERGE_AVERAGE_NOTE}}
+{{QC_NOTES}}
+
+---
+
+Access Restrictions
+None
+
+---
+
+==== AUTOMATED PROCESSING WORKFLOW DETAILS ====
+
+Processing Workflow Information
+Workflow Version: {{WORKFLOW_VERSION}}
+Processing Location: {{PROCESSING_LOCATION}}
+Processing Date: {{PROCESSING_DATE}}
+
+Configuration Parameters Used:
+- Temperature Difference Threshold: {{TEMP_THRESHOLD}}°C
+- Deployment Buffer: {{BUFFER_HOURS}} hours
+- Trim Start Points: {{TRIM_START}}
+- Trim End Points: {{TRIM_END}}
+- Expected Timezone: {{TIMEZONE}}
+
+Processing History:
+{{PROCESSING_HISTORY}}
+
+---
+
+Logger Details
+{{LOGGER_DETAILS}}
+
+---
+
+Related Files and References
+Original Details Files:
+{{DETAILS_CONTENT}}
+
+---
+
+Created by: {{CREATED_BY}}, {{CREATED_DATE}}
