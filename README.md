@@ -191,12 +191,16 @@ cd path/to/SCRIPTED_WORKFLOW
 
 # 2. Edit configuration 
 nano src/config.py  # or use your preferred editor
+# Set YEARS, MONITORING_TYPES, and optionally configure export paths.
+# Leave export paths blank for test runs.
 
 # 3. Run setup
 python3 src/setup.py
+# Creates directory structure and virtual environment (removes old venv if exists).
 
 # 4. Copy HOBO files to appropriate directory
-# Place files in: SCRIPTED_OUTPUTS/[year]/[monitoring_type]/01_HOBO_OUT/
+# Place .csv and _Details.txt files exported from HOBOware into:
+# SCRIPTED_OUTPUTS/[year]/[monitoring_type]/01_HOBO_OUT/
 
 # 5. Activate virtual environment
 source temp_monitoring_env/bin/activate  # macOS/Linux
@@ -204,14 +208,15 @@ source temp_monitoring_env/bin/activate  # macOS/Linux
    temp_monitoring_env\Scripts\activate     # Windows
 
 # 6. Run processing scripts in order
-python3 src/TRIM_PLOT.py
-python3 src/AVERAGING.py
-python3 src/NCPLOT.py
-python3 src/GENERATE_METADATA.py
+python3 src/TRIM_PLOT.py          # Trims data to deployment periods
+python3 src/AVERAGING.py          # Averages duplicates, flags issues (exports CSVs if configured)
+python3 src/NCPLOT.py             # Generates NetCDF and plots (exports if configured)
+python3 src/GENERATE_METADATA.py  # Creates DATASET files (exports if configured)
 
-# 7. Review outputs and export
-# Check 04_TOREVIEW for flagged files
-# Final files are in 05_READY, 06_NETCDF, and 07_METADATA
+# 7. Review outputs
+# Check 04_TOREVIEW for flagged files (NEVER exported)
+# QC-passed files in 05_READY, 06_NETCDF, 02_PLOTS/ready/, 07_METADATA
+# If export paths configured, files automatically organized into site subfolders
 ```
 
 
@@ -281,31 +286,55 @@ Not to be changed unless you know what youre doing! For TCRMP regular processing
 
 **Purpose**: Control where final processed files are exported for database integration.
 
-By default, these are blank (empty strings), which means files stay only in `SCRIPTED_OUTPUTS/` - perfect for test runs. For production runs where you want to export files to a database or archive location, set these paths:
+By default, all export paths are blank (empty strings), which means files stay only in `SCRIPTED_OUTPUTS/` - perfect for test runs. For production runs, set these paths to export files organized by site name into subfolders.
 
 ```python
-# Leave blank for test runs
+# Leave blank for test runs (default)
 'EXPORT_READY_PATH': '',
 'EXPORT_NETCDF_PATH': '',
 'EXPORT_METADATA_PATH': '',
+'EXPORT_PLOT_PATH': '',
 
-# For production runs, set paths like:
-'EXPORT_READY_PATH': '/path/to/TCRMP_temperature_database',
-'EXPORT_NETCDF_PATH': '/path/to/TCRMP_temperature_nc',
-'EXPORT_METADATA_PATH': '/path/to/metadata_archive',
+# For production runs, use relative paths (../ = parent directory):
+'EXPORT_READY_PATH': '../TCRMP_temperature_database_csv',
+'EXPORT_NETCDF_PATH': '../TCRMP_temperature_nc',
+'EXPORT_METADATA_PATH': '../TCRMP_temperature_metadata',
+'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plot',
+
+# Or use absolute paths:
+'EXPORT_READY_PATH': '/full/path/to/TCRMP_temperature_database_csv',
 ```
 
-**How It Works:**
-- **EXPORT_READY_PATH**: If set, final CSV files from `05_READY/` are copied to this location (organized by site code)
-- **EXPORT_NETCDF_PATH**: If set, NetCDF files from `06_NETCDF/` are copied to this location (organized by site name)
-- **EXPORT_METADATA_PATH**: If set, DATASET files from `07_METADATA/` are copied to this location
-- **Important**: Files in `04_TOREVIEW/` are NEVER exported - only QC-passed files are exported
+**Site-Specific Organization:**
+All exports are organized into subfolders by site location name (from metadata CSV):
+```
+TCRMP_temperature_database_csv/
+  Black_Point/
+    BT_TCBKPT_2410_2503.csv
+  Buck_Island_STT/
+    BT_TCBKIT_2410_2503.csv
 
-**Test vs Production:**
-- **Test Run**: Leave all export paths blank (default). Files stay in `SCRIPTED_OUTPUTS/` for review.
-- **Production Run**: Set export paths. Files are copied to external locations for database integration.
+TCRMP_temperature_nc/
+  Black_Point/
+    BT_TCBKPT_2410_2503.nc
 
-**Note**: The export directories must exist before running the workflow. Create them manually or the export will be skipped with a warning.
+TCRMP_temperature_database_plot/
+  Black_Point/
+    BT_TCBKPT_2410_2503_plot.png
+
+TCRMP_temperature_metadata/
+  Black_Point/
+    DATASET_BT_TCBKPT_2410_2503.txt
+```
+
+**Critical QC Policy:**
+- **ONLY QC-passed files are exported** (from `05_READY/`, `06_NETCDF/`, `02_PLOTS/ready/`, `07_METADATA/`)
+- **Files in `04_TOREVIEW/` are NEVER exported** - they must be reviewed and reprocessed first
+
+**Path Requirements:**
+- Export directories must exist before running - create them manually or export will be skipped with a warning
+- Relative paths (`../folder`) resolve from parent of `SCRIPTED_OUTPUTS/`
+- Site subfolders are created automatically
 
 #### 1.5 Preview Configuration
 
@@ -813,62 +842,63 @@ The generated DATASET file includes:
 
 ### Step 5: Final Export
 
-**Purpose**: Archive processed data and prepare for database integration.
+**Purpose**: Export QC-passed data to external locations for database integration and archiving.
 
-#### 5.1 Files to Archive
+#### 5.1 Automated Export System
 
-After successful processing, archive these files:
+If export paths are configured in `config.py` (Step 1.4), final files are automatically exported during processing:
 
-**From** `05_READY/`:
+- **AVERAGING.py** exports CSV files from `05_READY/`
+- **NCPLOT.py** exports NetCDF files from `06_NETCDF/` and plots from `02_PLOTS/ready/`
+- **GENERATE_METADATA.py** exports DATASET files from `07_METADATA/`
 
-* Final CSV files (averaged/merged)
-* Copy to: `TCRMP_temperature_database/[Site_Name]/`
-
-**From** `06_NETCDF/`:
-
-* NetCDF metadata files
-* ==maybe not do this? : Already copied to:== `TCRMP_temperature_nc/[Site_Name]/`
-
-**==Original Files:==**
-
-* ==Keep== `01_HOBO_OUT/` ==files with== `.hobo` ==binaries==
-* ==Copy to:== `TCRMP_temperature_database/[Site_Name]/` ==ANOTHER NAME FOR THIS FILE?== 
-* ==These serve as permanent archives==
-
-#### 5.2 Metadata Files (Automated)
-
-The DATASET and DETAILS metadata files are now automatically generated by `GENERATE_METADATA.py` (Step 4.6).
-
-**Files in** `07_METADATA/`:
-- `DATASET_*.txt` - Complete metadata description files
-- `DETAILS_*.txt` - Renamed Details files with proper convention
-
-**What's Included:**
-- Site information and coordinates
-- Deployment dates and periods
-- Sensor serial numbers
-- Data processing notes
-- Complete deployment details
-
-**Review Before Export:**
-1. Open DATASET files in text editor
-2. Verify all information is accurate
-3. Check coordinates and depth
-4. Confirm serial numbers match your records
-5. Ensure merge notes are present for duplicate loggers
-
-#### 5.3 Database Integration
-
-Copy files to appropriate locations:
+**All exports are organized by site location name into subfolders:**
 
 ```
-TCRMP_temperature_database/
-├── [Site_Name]/
-│   ├── BT_[SITE]_[YYMM]_[YYMM].csv          # From 05_READY/
-│   ├── BT_[SITE]_[YYMM]_[YYMM].hobo         # From 01_HOBO_OUT/
-│   ├── DETAILS_BT_[SITE]_[YYMM]_[YYMM].txt  # From 07_METADATA/
-│   └── DATASET_BT_[SITE]_[YYMM]_[YYMM].txt  # From 07_METADATA/
+../TCRMP_temperature_database/
+  Black_Point/
+    BT_TCBKPT_2410_2503.csv
+  Buck_Island_STT/
+    BT_TCBKIT_2410_2503.csv
+
+../TCRMP_temperature_nc/
+  Black_Point/
+    BT_TCBKPT_2410_2503.nc
+
+../TCRMP_temperature_database_plot/
+  Black_Point/
+    BT_TCBKPT_2410_2503_plot.png
+
+../TCRMP_temperature_metadata/
+  Black_Point/
+    DATASET_BT_TCBKPT_2410_2503.txt
 ```
+
+#### 5.2 QC-Only Export Policy
+
+**CRITICAL:** Only quality-controlled files are exported:
+
+✅ **Exported:**
+- Files in `05_READY/` (passed QC)
+- NetCDF files from `06_NETCDF/` (generated from READY files)
+- Plots from `02_PLOTS/ready/` (finalized plots)
+- DATASET files from `07_METADATA/` (completed metadata)
+
+❌ **NEVER Exported:**
+- Files in `04_TOREVIEW/` (flagged for review)
+- Pre-trimmed or post-trimmed plots
+- Partial or incomplete data
+
+Files flagged for review must be manually inspected and reprocessed before they will be exported.
+
+#### 5.3 Verification
+
+After processing, verify exports (if configured):
+
+1. Check that site subfolders were created correctly
+2. Verify file naming follows convention: `BT_SITECODE_YYMM_YYMM.*`
+3. Confirm all expected files are present
+4. Check that no TOREVIEW files were exported
 
 
 ---

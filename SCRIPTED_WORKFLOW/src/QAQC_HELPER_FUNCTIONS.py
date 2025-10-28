@@ -10,6 +10,38 @@ from datetime import timedelta
 import copy
 import matplotlib.dates as mdates
 import numpy as np
+from config import CONFIG, resolve_path
+
+# Load site metadata CSV for location name mapping
+_metadata_df = None
+
+def _load_metadata_df():
+    """Lazy load the metadata dataframe."""
+    global _metadata_df
+    if _metadata_df is None:
+        metadata_csv_path = resolve_path(CONFIG['SITE_METADATA_CSV'])
+        _metadata_df = pd.read_csv(metadata_csv_path, dtype=str)
+        _metadata_df.set_index("6LetterCode", inplace=True)
+    return _metadata_df
+
+def get_location_from_code(site_code):
+    """
+    Return location name for a given 6-letter site code from metadata CSV.
+    Converts location name to folder-safe format (underscores instead of spaces).
+    
+    Parameters:
+        site_code (str): 6-letter site code (e.g., 'TCBKPT')
+    
+    Returns:
+        str: Folder-safe location name (e.g., 'Black_Point') or site code if not found
+    """
+    metadata_df = _load_metadata_df()
+    try:
+        location = metadata_df.loc[site_code, "Location"]
+        return location.replace(" ", "_")  # safe folder name
+    except KeyError:
+        print(f"Warning: Site code {site_code} not found in metadata CSV.")
+        return site_code  # fallback to site code
 
 #
 def get_csv_files(folder_path, file_pattern='*.csv'):

@@ -4,15 +4,12 @@
 
 Version 1.0 | TCRMP Temperature Monitoring Program
 
-Code Authors: Cole Sheeley, Travis Hamlin (UVI)
-
-Code Reviewer: Lauren Olinger (UVI)
-
+Code Authors: Cole Sheeley,  Lauren Olinger, Travis Hamlin
+U. Virgin Islands 
 
 ---
 
 ## Table of Contents
-
 
 1. [Overview](#overview)
 2. [Prerequisites](#prerequisites)
@@ -112,7 +109,6 @@ If Python is not installed or version is below 3.8:
 * Download: [code.visualstudio.com](https://code.visualstudio.com/)
 * After installation, install the Python extension:
 
-  
   1. Open VS Code
   2. Click Extensions icon (left sidebar)
   3. Search for "Python"

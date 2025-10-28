@@ -9,7 +9,7 @@ import xarray as xr
 import yaml
 
 # Set paths from config
-from config import CONFIG, get_path_for
+from config import CONFIG, get_path_for, resolve_path
 from processing_logger import ProcessingLogger
 import re
 
@@ -17,8 +17,8 @@ ready_folder = get_path_for("05_READY")
 save_dir = get_path_for("02_PLOTS/ready")
 nc_folder = get_path_for("06_NETCDF")
 log_dir = get_path_for("07_METADATA/processing_logs")
-metadata_folder = os.path.join(CONFIG['WORKFLOW_DIRECTORY'], "Site_Metadata")
-metadata_csv = os.path.join(os.path.dirname(CONFIG['BASE_DIRECTORY']),"TCRMP_TempSiteMetadata.csv")
+metadata_folder = os.path.join(CONFIG['WORKFLOW_DIRECTORY'], CONFIG['SITE_METADATA_FOLDER'])
+metadata_csv = resolve_path(CONFIG['SITE_METADATA_CSV'])
 
 
 #%% IMPORT FUNCTIONS
@@ -31,8 +31,8 @@ from QAQC_HELPER_FUNCTIONS import (
     merged_dict_add,
     plot_merged_temperatures,
     generate_trimmed_filenames,
-    create_and_save_offload_plots
-    
+    create_and_save_offload_plots,
+    get_location_from_code
 )
 
 # 1. Get ready files
@@ -147,19 +147,6 @@ def make_netcdf(df, site_code, global_attrs, var_attrs, *output_paths):
         ds.to_netcdf(path)
         print(f"Saved: {path}")
 
-# Load the metadata CSV once
-metadata_df = pd.read_csv(metadata_csv, dtype=str)
-metadata_df.set_index("6LetterCode", inplace=True)
-
-def get_location_from_code(site_code):
-    """Return Location name for a given 6-letter site code from metadata CSV."""
-    try:
-        location = metadata_df.loc[site_code, "Location"]
-        return location.replace(" ", "_")  # safe folder name
-    except KeyError:
-        print(f"Warning: Site code {site_code} not found in metadata CSV.")
-        return site_code  # fallback to site code
-
 def main():
     os.makedirs(nc_folder, exist_ok=True)
     csv_files = glob.glob(os.path.join(ready_folder, '*.csv'))
@@ -188,7 +175,7 @@ def main():
         output_paths = [output_path]
         
         # Check if export path is configured
-        export_nc_path = CONFIG.get('EXPORT_NETCDF_PATH', '')
+        export_nc_path = resolve_path(CONFIG.get('EXPORT_NETCDF_PATH', ''))
         if export_nc_path and os.path.exists(export_nc_path):
             # Path for NC export folder (site-specific subfolder)
             location_name = get_location_from_code(site_code)
@@ -217,5 +204,44 @@ def main():
                 )
                 print(f"  [OK] Log updated: {site}_{start_yymm}.json")
 
+def export_plots():
+    """Export plots from 02_PLOTS/ready/ to external location organized by site."""
+    export_plot_path = resolve_path(CONFIG.get('EXPORT_PLOT_PATH', ''))
+    
+    if not export_plot_path:
+        print("\n[SKIP] No export path configured for plots (test mode)")
+        return
+    
+    if not os.path.exists(export_plot_path):
+        print(f"\n[WARN] Export path configured but does not exist: {export_plot_path}")
+        print("   Skipping plot export. Create the directory to enable export.")
+        return
+    
+    print(f"\n[EXPORT] Exporting plots to: {export_plot_path}")
+    import shutil
+    
+    plot_files = glob.glob(os.path.join(save_dir, "BT_*_plot.png"))
+    exported_count = 0
+    
+    for plot_file in plot_files:
+        basename = os.path.basename(plot_file)
+        # Extract site code from filename (e.g., BT_TCBKPT_2410_2503_plot.png)
+        match = re.match(r'BT_([A-Z]+\d*)_', basename)
+        
+        if match:
+            site_code = match.group(1)
+            # Get full location name for folder
+            location_name = get_location_from_code(site_code)
+            site_plot_folder = os.path.join(export_plot_path, location_name)
+            os.makedirs(site_plot_folder, exist_ok=True)
+            
+            dest_path = os.path.join(site_plot_folder, basename)
+            shutil.copy2(plot_file, dest_path)
+            exported_count += 1
+            print(f"  [OK] Exported: {basename} -> {location_name}/")
+    
+    print(f"\n[OK] Exported {exported_count} plot file(s)")
+
 if __name__ == '__main__':
     main()
+    export_plots()

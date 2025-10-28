@@ -6,13 +6,13 @@ import numpy as np
 import os
 
 # Set paths from config
-from config import CONFIG, get_path_for
+from config import CONFIG, get_path_for, resolve_path
 from processing_logger import ProcessingLogger
 import re
 
 review_folder = get_path_for("04_TOREVIEW")
 trimmed_csv = get_path_for("03_TRIMMED_CSVS")
-deployment_log_path = os.path.join(CONFIG['BASE_DIRECTORY'],"Temperature_UVI_deployment_log.csv")
+deployment_log_path = resolve_path(CONFIG['DEPLOYMENT_LOG_CSV'])
 output_folder = get_path_for("05_READY")
 log_dir = get_path_for("07_METADATA/processing_logs")
 
@@ -28,6 +28,7 @@ from QAQC_HELPER_FUNCTIONS import (
     identify_calculations,
     build_calc_df_subset,
     add_comparison_columns,
+    get_location_from_code,
     report_flags,
     save_flagged_files,
     average_temperature_if_close,
@@ -193,7 +194,7 @@ for site_code in df_files:
 print("\n[OK] Processing logs updated!")
 
 # 38. Export READY files to external location if configured
-export_path = CONFIG.get('EXPORT_READY_PATH', '')
+export_path = resolve_path(CONFIG.get('EXPORT_READY_PATH', ''))
 if export_path and os.path.exists(export_path):
     print(f"\n[EXPORT] Exporting READY files to: {export_path}")
     import shutil
@@ -208,15 +209,15 @@ if export_path and os.path.exists(export_path):
         
         if match:
             site_code = match.group(1)
-            # Get full location name from site code (would need helper function)
-            # For now, use site_code as folder name
-            site_export_folder = os.path.join(export_path, site_code)
+            # Get full location name from site code for folder name
+            location_name = get_location_from_code(site_code)
+            site_export_folder = os.path.join(export_path, location_name)
             os.makedirs(site_export_folder, exist_ok=True)
             
             dest_path = os.path.join(site_export_folder, basename)
             shutil.copy2(ready_file, dest_path)
             exported_count += 1
-            print(f"  [OK] Exported: {basename} -> {site_code}/")
+            print(f"  [OK] Exported: {basename} -> {location_name}/")
     
     print(f"\n[OK] Exported {exported_count} READY file(s)")
 elif export_path:

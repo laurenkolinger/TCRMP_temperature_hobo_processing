@@ -35,7 +35,8 @@ CONFIG = {
     # Directory setup
     'BASE_DIRECTORY': BASE_DIR,
     'WORKFLOW_DIRECTORY': WORKFLOW_DIR,
-    'YEARS': ['LaurenTest_21Oct2025'],
+    'YEARS': ['LO_test2'],
+    # 'YEARS': ['test'],
     'MONITORING_TYPES': ['annual'],
     
     # Subdirectories matching 2025/PBL structure
@@ -50,9 +51,28 @@ CONFIG = {
         '06_NETCDF',
         '07_METADATA/processing_logs',
         '07_METADATA/needs_review',
-        'deployment_logs',
         'config_snapshots'
     ],
+
+        # Export paths for final outputs (relative to BASE_DIRECTORY parent, or use absolute paths)
+    
+    # Leave blank ('') for test runs - files stay in SCRIPTED_OUTPUTS only
+    'EXPORT_READY_PATH': '',  # Final CSV files from 05_READY/
+    'EXPORT_NETCDF_PATH': '',  # NetCDF files from 06_NETCDF/
+    'EXPORT_METADATA_PATH': '',  # DATASET files from 07_METADATA/
+    'EXPORT_PLOT_PATH': '',  # Final plots from 02_PLOTS/ready/
+    
+    # FOR TESTING - example using misc/test_exports:
+    # 'EXPORT_READY_PATH': 'misc/test_exports/TCRMP_temperature_database_csv',
+    # 'EXPORT_NETCDF_PATH': 'misc/test_exports/TCRMP_temperature_nc',
+    # 'EXPORT_METADATA_PATH': 'misc/test_exports/TCRMP_temperature_metadata',
+    # 'EXPORT_PLOT_PATH': 'misc/test_exports/TCRMP_temperature_database_plot',
+
+    # FOR PRODUCTION - sibling folders to TCRMP_temperature_hobo_processing:
+    # 'EXPORT_READY_PATH': '../TCRMP_temperature_database_csv',  
+    # 'EXPORT_NETCDF_PATH': '../TCRMP_temperature_nc',
+    # 'EXPORT_METADATA_PATH': '../TCRMP_temperature_metadata',
+    # 'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plot',
     
     # Virtual environment
     'VENV_NAME': 'temp_monitoring_env',
@@ -106,14 +126,12 @@ CONFIG = {
     'CREATED_DATE': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     'CREATED_BY': os.getenv('USER', 'unknown'),
     
-    # Export paths for final outputs (leave blank for test runs, set paths for production exports)
-    # These paths are used to copy final processed files to a separate location (e.g., database folder)
-    'EXPORT_READY_PATH': '',  # Path to export final CSV files from 05_READY/ (e.g., 'path/to/TCRMP_temperature_database')
-    'EXPORT_NETCDF_PATH': '',  # Path to export NetCDF files from 06_NETCDF/ (e.g., 'path/to/TCRMP_temperature_nc')
-    'EXPORT_METADATA_PATH': '',  # Path to export DATASET files from 07_METADATA/ (e.g., 'path/to/metadata_archive')
+    # Input data sources (relative to BASE_DIRECTORY parent, or use absolute paths)
+    'SITE_METADATA_CSV': 'TCRMP_TempSiteMetadata.csv',  # CSV mapping site codes to full location names
+    'DEPLOYMENT_LOG_CSV': 'Temperature_UVI_deployment_log.csv',  # Deployment metadata
+    'SITE_METADATA_FOLDER': 'Site_Metadata',  # YAML files with site metadata (relative to WORKFLOW_DIRECTORY)
     
-    # Note: Files flagged for review (04_TOREVIEW) are NEVER exported to these paths
-    # Only QC-passed files are exported when paths are configured
+
 }
 
 # Monitoring type configurations
@@ -164,3 +182,20 @@ def get_path_for(subfolder: str, year=None, monitoring_type=None):
     year = year or CONFIG['YEARS'][0]
     monitoring_type = monitoring_type or CONFIG['MONITORING_TYPES'][0]
     return os.path.join(CONFIG['BASE_DIRECTORY'], year, monitoring_type, subfolder)
+
+def resolve_path(config_path: str) -> str:
+    """
+    Resolves a config path to an absolute path.
+    - If path is empty, returns empty string
+    - If path is absolute, returns as-is
+    - If path is relative (e.g., '../file.csv'), resolves relative to BASE_DIRECTORY parent
+    """
+    if not config_path:
+        return ''
+    
+    if os.path.isabs(config_path):
+        return config_path
+    
+    # Resolve relative to parent of BASE_DIRECTORY
+    base_parent = os.path.dirname(CONFIG['BASE_DIRECTORY'])
+    return os.path.abspath(os.path.join(base_parent, config_path))

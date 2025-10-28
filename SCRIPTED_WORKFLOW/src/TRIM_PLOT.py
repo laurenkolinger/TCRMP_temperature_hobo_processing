@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 # Set paths from config
-from config import CONFIG, get_path_for
+from config import CONFIG, get_path_for, resolve_path
 from processing_logger import get_logger
 import re
 import glob
@@ -18,7 +18,7 @@ pretrimmed_path = get_path_for("02_PLOTS/pretrimmed")
 posttrimmed_path = get_path_for("02_PLOTS/posttrimmed")
 trimmed_csv = get_path_for("03_TRIMMED_CSVS")
 log_dir = get_path_for("07_METADATA/processing_logs")
-deployment_log_path = os.path.join(os.path.dirname(CONFIG['BASE_DIRECTORY']),"Temperature_UVI_deployment_log.csv")
+deployment_log_path = resolve_path(CONFIG['DEPLOYMENT_LOG_CSV'])
 
 
 #IMPORT FUNCTIONS

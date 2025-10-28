@@ -26,14 +26,15 @@ from datetime import datetime
 from pathlib import Path
 
 # Set paths from config
-from config import CONFIG, get_path_for
+from config import CONFIG, get_path_for, resolve_path
 from processing_logger import ProcessingLogger
+from QAQC_HELPER_FUNCTIONS import get_location_from_code
 
 hobo_out_folder = get_path_for("01_HOBO_OUT")
 ready_folder = get_path_for("05_READY")
 metadata_output = get_path_for("07_METADATA")
 log_dir = get_path_for("07_METADATA/processing_logs")
-site_metadata_folder = os.path.join(CONFIG['WORKFLOW_DIRECTORY'], "Site_Metadata")
+site_metadata_folder = os.path.join(CONFIG['WORKFLOW_DIRECTORY'], CONFIG['SITE_METADATA_FOLDER'])
 template_folder = os.path.join(os.path.dirname(CONFIG['BASE_DIRECTORY']), "misc", "templates")
 
 # Load template
@@ -392,7 +393,7 @@ def main():
     print(f"{'='*60}\n")
     
     # Export metadata files to external location if configured
-    export_path = CONFIG.get('EXPORT_METADATA_PATH', '')
+    export_path = resolve_path(CONFIG.get('EXPORT_METADATA_PATH', ''))
     if export_path and os.path.exists(export_path):
         print(f"\n[EXPORT] Exporting metadata files to: {export_path}")
         import shutil
@@ -402,10 +403,26 @@ def main():
         
         for metadata_file in metadata_files:
             basename = os.path.basename(metadata_file)
-            dest_path = os.path.join(export_path, basename)
-            shutil.copy2(metadata_file, dest_path)
-            exported_count += 1
-            print(f"  [OK] Exported: {basename}")
+            # Extract site code from filename (e.g., DATASET_BT_TCBKPT_2410_2503.txt)
+            match = re.match(r'DATASET_BT_([A-Z]+\d*)_', basename)
+            
+            if match:
+                site_code = match.group(1)
+                # Get full location name for folder
+                location_name = get_location_from_code(site_code)
+                site_metadata_folder = os.path.join(export_path, location_name)
+                os.makedirs(site_metadata_folder, exist_ok=True)
+                
+                dest_path = os.path.join(site_metadata_folder, basename)
+                shutil.copy2(metadata_file, dest_path)
+                exported_count += 1
+                print(f"  [OK] Exported: {basename} -> {location_name}/")
+            else:
+                # Fallback: copy to root if pattern doesn't match
+                dest_path = os.path.join(export_path, basename)
+                shutil.copy2(metadata_file, dest_path)
+                exported_count += 1
+                print(f"  [OK] Exported: {basename}")
         
         print(f"\n[OK] Exported {exported_count} metadata file(s)")
     elif export_path:
