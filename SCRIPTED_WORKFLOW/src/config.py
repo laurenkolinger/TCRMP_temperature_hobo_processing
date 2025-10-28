@@ -35,8 +35,8 @@ CONFIG = {
     # Directory setup
     'BASE_DIRECTORY': BASE_DIR,
     'WORKFLOW_DIRECTORY': WORKFLOW_DIR,
-    'YEARS': ['LO_test2'],
-    # 'YEARS': ['test'],
+    # 'YEARS': ['LO_test2'],
+    'YEARS': ['test'],
     'MONITORING_TYPES': ['annual'],
     
     # Subdirectories matching 2025/PBL structure
