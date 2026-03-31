@@ -6,7 +6,7 @@ Version 1.0 | TCRMP Temperature Monitoring Program
 
 Code Authors: Cole Sheeley,  Lauren Olinger, Travis Hamlin
 U. Virgin Islands 
-TESTING
+
 
 ---
 
