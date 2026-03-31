@@ -860,10 +860,11 @@ def merged_dict_add(df_files):
 
 def plot_offset_agreement(df_files, panama_codes):
     """
-    Generate scatter plots comparing 'c' and 'd' logger temperature readings.
+    Generate scatter plots comparing 'c' and 'd' logger daily mean temperatures.
+    Uses daily means to account for the 15-minute offset between loggers.
     Returns:
-        offset_stats: dict of above/below counts for drift inspection.
-        drifting: dict of files where agreement fails.
+        offset_stats: dict of FLAG and SUPER FLAG counts per site/file.
+        drifting: dict of files where daily mean difference exceeds thresholds.
     """
 
     offset_compare = copy.deepcopy(df_files)
@@ -887,45 +888,50 @@ def plot_offset_agreement(df_files, panama_codes):
                     df_d = df
 
             if df_c is not None and df_d is not None:
-                min_len = min(len(df_c), len(df_d))
-                temp_c = df_c['Temp, °C'].iloc[:min_len].reset_index(drop=True)
-                temp_d = df_d['Temp, °C'].iloc[:min_len].reset_index(drop=True)
+                # Resample to daily means and align on shared dates
+                daily_c = df_c.set_index(date_col)['Temp, °C'].resample('D').mean()
+                daily_d = df_d.set_index(date_col)['Temp, °C'].resample('D').mean()
+                daily = pd.DataFrame({'c': daily_c, 'd': daily_d}).dropna()
 
-                blue_above = sum(tc > td for tc, td in zip(temp_c, temp_d))
-                blue_below = sum(tc < td for tc, td in zip(temp_c, temp_d))
-                red_above = sum(td > tc for tc, td in zip(temp_c, temp_d))
-                red_below = sum(td < tc for tc, td in zip(temp_c, temp_d))
+                if daily.empty:
+                    print(f"[SKIP] No overlapping dates for {site_code}, file {file_number}")
+                    continue
+
+                diff = (daily['c'] - daily['d']).abs()
+
+                flag_count = int((diff > 0.2).sum())
+                super_flag_count = int((diff > 0.4).sum())
 
                 # Store stats
                 offset_stats.setdefault(site_code, {})[file_number] = {
-                    'blue_above': blue_above,
-                    'blue_below': blue_below,
-                    'red_above': red_above,
-                    'red_below': red_below
+                    'flag_count': flag_count,
+                    'super_flag_count': super_flag_count
                 }
 
-                # Drift agreement check
-                if not (blue_above == red_below and blue_below == red_above):
-                    drifting.setdefault(site_code, {})[file_number] = {
-                        'c': file_data.get('c'),
-                        'd': file_data.get('d')
-                    }
+                # Drift check — build combined daily DataFrame for review
+                if flag_count > 0 or super_flag_count > 0:
+                    drift_df = pd.DataFrame({
+                        'Temp_c_daily': daily['c'],
+                        'Temp_d_daily': daily['d'],
+                        'Difference': diff,
+                        'Flag': diff.apply(lambda x: 'SUPER FLAG' if x > 0.4 else ('FLAG' if x > 0.2 else ''))
+                    })
+                    drift_df.index.name = 'Date'
+                    drifting.setdefault(site_code, {})[file_number] = drift_df
 
-                # Print + Plot
+                # Print
                 print(f"Site: {site_code}, File Number: {file_number}")
-                print(f"  Blue points above 1:1 line: {blue_above}")
-                print(f"  Blue points below 1:1 line: {blue_below}")
-                print(f"  Red points above 1:1 line: {red_above}")
-                print(f"  Red points below 1:1 line: {red_below}")
+                print(f"  FLAG count (|diff| > 0.2°C): {flag_count}")
+                print(f"  SUPER FLAG count (|diff| > 0.4°C): {super_flag_count}")
 
+                # Scatter plot of daily means
                 plt.figure(figsize=(8, 8))
-                plt.scatter(temp_c, temp_d, c='blue', s=10, alpha=0.7, label='Logger c')
-                plt.scatter(temp_d, temp_c, c='red', s=10, alpha=0.7, label='Logger d')
-                min_temp = min(temp_c.min(), temp_d.min())
-                max_temp = max(temp_c.max(), temp_d.max())
+                plt.scatter(daily['c'], daily['d'], c='blue', s=20, alpha=0.7, label='Daily means')
+                min_temp = min(daily['c'].min(), daily['d'].min())
+                max_temp = max(daily['c'].max(), daily['d'].max())
                 plt.plot([min_temp, max_temp], [min_temp, max_temp], color='black', linestyle='--', label='1:1 Line')
-                plt.xlabel('Logger c Temp (°C)')
-                plt.ylabel('Logger d Temp (°C)')
+                plt.xlabel('Logger c Daily Mean Temp (°C)')
+                plt.ylabel('Logger d Daily Mean Temp (°C)')
                 plt.title(f'Temperature Agreement - Site: {site_code}, File: {file_number}')
                 plt.legend()
                 plt.grid(True)
@@ -936,20 +942,18 @@ def plot_offset_agreement(df_files, panama_codes):
 
 def offload_drifting_files(drifting_dict, review_folder):
     """
-    Save 'c' and 'd' files from drifting_dict into review_folder.
+    Save combined daily drift DataFrames from drifting_dict into review_folder.
+    Each file contains Temp_c_daily, Temp_d_daily, Difference, and Flag columns.
     """
     os.makedirs(review_folder, exist_ok=True)
 
     for site_code, file_numbers in drifting_dict.items():
-        for file_number, file_data in file_numbers.items():
-            for identifier in ['c', 'd']:
-                df = file_data[identifier]['DataFrame']
-                original_name = file_data[identifier].get('FileName', f"{site_code}_{file_number}_{identifier}.csv")
-                save_name = f"{site_code}_{file_number}_{identifier}_DRIFT.csv"
-                save_path = os.path.join(review_folder, save_name)
+        for file_number, drift_df in file_numbers.items():
+            save_name = f"{site_code}_{file_number}_DRIFT.csv"
+            save_path = os.path.join(review_folder, save_name)
 
-                df.to_csv(save_path, index=False)
-                print(f"Offloaded: {save_name}")
+            drift_df.to_csv(save_path)
+            print(f"Offloaded: {save_name}")
 
 def plot_merged_temperatures(merged_dict, panama_codes):
     """
