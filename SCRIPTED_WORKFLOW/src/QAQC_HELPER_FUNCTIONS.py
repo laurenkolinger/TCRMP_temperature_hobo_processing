@@ -570,7 +570,7 @@ def compute_temperature_difference(df_files):
                 df_a = identifiers['a']['DataFrame']
                 df_b = identifiers['b']['DataFrame']
                 if 'Temp, °C' in df_a.columns and 'Temp, °C' in df_b.columns:
-                    df_a['Temperature_Difference'] = df_a['Temp, °C'] - df_b['Temp, °C']
+                    df_a['Temperature_Difference'] = (df_a['Temp, °C'] - df_b['Temp, °C']).abs()
                 else:
                     print(f"Temp column missing: {site_code}, File Number: {file_number}")
             else:
@@ -588,8 +588,8 @@ def identify_calculations(df_files):
             if 'a' in identifiers:
                 df_a = identifiers['a']['DataFrame']
                 if 'Temperature_Difference' in df_a.columns:
-                    high = df_a[abs(df_a['Temperature_Difference']) > 0.4]
-                    moderate = df_a[abs(df_a['Temperature_Difference']) > 0.2]
+                    high = df_a[df_a['Temperature_Difference'] > 0.4]
+                    moderate = df_a[df_a['Temperature_Difference'] > 0.2]
                     if not high.empty or len(moderate) >= 68:
                         calculations[(site_code, file_number)] = identifiers['a']['File Name']
     return calculations
