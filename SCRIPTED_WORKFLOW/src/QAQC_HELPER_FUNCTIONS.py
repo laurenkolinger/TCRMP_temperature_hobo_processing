@@ -671,13 +671,17 @@ def save_flagged_files(calc_df_files, review_folder):
 
 
 
-def average_temperature_if_close(df_files, threshold=0.2):
+def average_temperature_if_close(df_files, threshold=0.2, calculations=None):
     """
     Averages temperatures between 'a' and 'b' files if their difference is within the threshold.
     Updates the 'a' DataFrame with the new averaged 'Temp, °C' values.
+    Skips files that are in `calculations` (flagged for review).
     """
     for site_code, file_numbers in df_files.items():
         for file_number, identifiers in file_numbers.items():
+            if calculations and (site_code, file_number) in calculations:
+                print(f"Averaging skipped (flagged for review): {site_code}, File Number: {file_number}")
+                continue
             if 'a' in identifiers and 'b' in identifiers:
                 df_a = identifiers['a']['DataFrame']
                 df_b = identifiers['b']['DataFrame']
@@ -1057,14 +1061,18 @@ def generate_trimmed_filenames(df_files, merged_dict, panama_codes):
         print(f"Intended to save: {filename}")
 
 
-def save_offload_files(df_files, merged_dict, panama_codes, output_folder):
+def save_offload_files(df_files, merged_dict, panama_codes, output_folder, calculations=None, drifting=None):
     """
     Saves 'a' version files and merged files as CSVs to the output_folder.
     Adjusts date columns and temperature column names for saving.
+    Skips files flagged in `calculations` (a/b) or `drifting` (c/d).
     """
     # Save 'a' files
     for site_code, site_data in df_files.items():
         for file_number, file_data in site_data.items():
+            if calculations and (site_code, file_number) in calculations:
+                print(f"Skipping flagged file (sent to review): {site_code}, File Number: {file_number}")
+                continue
             if 'a' in file_data:
                 df_a = file_data['a']['DataFrame'].copy()
                 if site_code in panama_codes:
@@ -1103,6 +1111,9 @@ def save_offload_files(df_files, merged_dict, panama_codes, output_folder):
 
     # Save merged files
     for site_code, df in merged_dict.items():
+        if drifting and site_code in drifting:
+            print(f"Skipping drifting merged file (sent to review): {site_code}")
+            continue
         df = df.copy()
         if site_code in panama_codes:
             date_col = 'Date Time, GMT-05:00'

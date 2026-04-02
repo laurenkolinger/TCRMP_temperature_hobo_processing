@@ -92,13 +92,13 @@ offload_drifting_files(drifting, review_folder)
 save_flagged_files(calc_df_files, review_folder)
 
 # 27. Average temperature between 'a' and 'b' files if difference below threshold (0.2°C)
-average_temperature_if_close(df_files)
+average_temperature_if_close(df_files, calculations=calculations)
 
 # 29. Drop extra columns, keep only necessary ones (#, date_col, Temp)
 drop_extra_columns(df_files, panama_codes)
 
 # 36. Save 'a' files and merged files as CSVs to output folder with adjusted columns
-saved_files = save_offload_files(df_files, merged_offset_data, panama_codes, output_folder)
+saved_files = save_offload_files(df_files, merged_offset_data, panama_codes, output_folder, calculations=calculations, drifting=drifting)
 
 # 37. Update processing logs with averaging/merging decisions
 print("\n[LOG] Updating processing logs...")
