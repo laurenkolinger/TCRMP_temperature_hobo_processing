@@ -296,8 +296,8 @@ By default, all export paths are blank (empty strings), which means files stay o
 
 # For production runs, use relative paths (../ = parent directory):
 'EXPORT_READY_PATH': '../TCRMP_temperature_database_csv',
-'EXPORT_NETCDF_PATH': '../TCRMP_temperature_nc',
-'EXPORT_METADATA_PATH': '../TCRMP_temperature_metadata',
+'EXPORT_NETCDF_PATH': '../TCRMP_temperature_database_nc',
+'EXPORT_METADATA_PATH': '../TCRMP_temperature_database_metadata',
 'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plot',
 
 # Or use absolute paths:
