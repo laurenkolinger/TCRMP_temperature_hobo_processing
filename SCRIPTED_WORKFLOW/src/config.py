@@ -36,7 +36,7 @@ CONFIG = {
     'BASE_DIRECTORY': BASE_DIR,
     'WORKFLOW_DIRECTORY': WORKFLOW_DIR,
     # 'YEARS': ['LO_test2'],
-    'YEARS': ['test'],
+    'YEARS': ['2025'],
     'MONITORING_TYPES': ['annual'],
     
     # Subdirectories matching 2025/PBL structure
@@ -58,7 +58,7 @@ CONFIG = {
     
     # Leave blank ('') for test runs - files stay in SCRIPTED_OUTPUTS only
     'EXPORT_READY_PATH': '',  # Final CSV files from 05_READY/
-    'EXPORT_NETCDF_PATH': '',  # NetCDF files from 06_NETCDF/
+    #'EXPORT_NETCDF_PATH': '',  # NetCDF files from 06_NETCDF/
     'EXPORT_METADATA_PATH': '',  # DATASET files from 07_METADATA/
     'EXPORT_PLOT_PATH': '',  # Final plots from 02_PLOTS/ready/
     
@@ -70,8 +70,8 @@ CONFIG = {
 
     # FOR PRODUCTION - sibling folders to TCRMP_temperature_hobo_processing:
     # 'EXPORT_READY_PATH': '../TCRMP_temperature_database_csv',  
-    # 'EXPORT_NETCDF_PATH': '../TCRMP_temperature_nc',
-    # 'EXPORT_METADATA_PATH': '../TCRMP_temperature_metadata',
+    'EXPORT_NETCDF_PATH': '../TCRMP_temperature_database_nc',
+    # 'EXPORT_METADATA_PATH': '../TCRMP_temperature_database_metadata',
     # 'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plot',
     
     # Virtual environment
