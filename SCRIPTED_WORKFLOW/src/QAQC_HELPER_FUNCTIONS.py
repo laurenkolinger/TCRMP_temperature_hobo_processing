@@ -435,8 +435,7 @@ def plot_pre_trimmed(df_files, panama_codes, save_path):
                 df = file_info['DataFrame']
 
                 date_column = "Date Time, GMT-05:00" if site_code in panama_codes else "Date Time, GMT-04:00"
-                if df[date_column].dtype == 'object':
-                    df[date_column] = pd.to_datetime(df[date_column], format='%m/%d/%y %H:%M:%S')
+                df[date_column] = pd.to_datetime(df[date_column])
 
                 plt.figure(figsize=(12, 6))
                 plt.plot(df[date_column], df['Temp, °C'], color='blue', marker='o', linestyle='-')
@@ -444,6 +443,8 @@ def plot_pre_trimmed(df_files, panama_codes, save_path):
                 plt.xlabel('Date Time')
                 plt.ylabel('Temp, °C')
                 plt.grid(True)
+                plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
+                plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
                 plt.xticks(rotation=45)
                 plt.tight_layout()
 
@@ -501,7 +502,7 @@ def check_data_lengths(df_files):
                 else:
                     print(f"Site code: {site_code}, File number: {file_number} have same data points: {next(iter(num_rows.values()))}.")
 
-def plot_post_trimmed(df_files, panama_codes, save_path):
+def plot_post_trimmed(df_files, panama_codes, save_path, pre_trim_data=None):
     os.makedirs(save_path, exist_ok=True)
 
     for site_code, site_data in df_files.items():
@@ -514,11 +515,42 @@ def plot_post_trimmed(df_files, panama_codes, save_path):
                     df[date_column] = pd.to_datetime(df[date_column], format='%m/%d/%y %H:%M:%S')
 
                 plt.figure(figsize=(12, 6))
+
+                # Plot trimmed-off data as faint dotted line if pre-trim data available
+                key = (site_code, file_number, file_identifier)
+                if pre_trim_data and key in pre_trim_data:
+                    df_pre = pre_trim_data[key].copy()
+                    df_pre[date_column] = pd.to_datetime(df_pre[date_column], format='%m/%d/%y %H:%M:%S')
+
+                    # Data outside the post-trimmed range
+                    trim_start = df[date_column].min()
+                    trim_end = df[date_column].max()
+                    df_before = df_pre[df_pre[date_column] < trim_start]
+                    df_after = df_pre[df_pre[date_column] > trim_end]
+
+                    if not df_before.empty:
+                        plt.plot(df_before[date_column], df_before['Temp, °C'],
+                                 color='gray', linestyle=':', alpha=0.4, linewidth=1)
+                    if not df_after.empty:
+                        plt.plot(df_after[date_column], df_after['Temp, °C'],
+                                 color='gray', linestyle=':', alpha=0.4, linewidth=1)
+
+                    # Vertical lines at trim boundaries
+                    plt.axvline(x=trim_start, color='red', linestyle='--', linewidth=1, label='Trim boundary')
+                    plt.axvline(x=trim_end, color='red', linestyle='--', linewidth=1)
+
+                    # Set x-axis to pre-trimmed bounds
+                    plt.xlim(df_pre[date_column].min(), df_pre[date_column].max())
+
+                # Plot post-trimmed data
                 plt.plot(df[date_column], df['Temp, °C'], color='green', marker='o', linestyle='-')
                 plt.title(f'Post-Trimmed Temperature: {site_code}_{file_number}_{file_identifier}')
                 plt.xlabel('Date Time')
                 plt.ylabel('Temp, °C')
                 plt.grid(True)
+                plt.legend()
+                plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
+                plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
                 plt.xticks(rotation=45)
                 plt.tight_layout()
 
@@ -1179,14 +1211,14 @@ def create_and_save_offload_plots(ready_folder, save_dir, panama_codes):
         
         # Convert date column to datetime
         try:
-            df[date_col] = pd.to_datetime(df[date_col], format='%Y-%m-%d %H:%M:%S')
+            df[date_col] = pd.to_datetime(df[date_col], format='mixed')
         except Exception as e:
             print(f"Error converting date for {site_code} in file {csv_file}: {e}")
             continue
 
         # Plot temperature over time
         plt.figure(figsize=(12, 6))
-        plt.plot(df[date_col], df['Temperature'], color='blue', marker='o', linestyle='-')
+        plt.plot(df[date_col], df['Temperature'], color='blue', marker='o', linestyle='', markersize=2)
         plt.title(f'Temperature Over Time for Site: {site_code}')
         plt.xlabel('Date Time')
         plt.ylabel('Temp, °C')

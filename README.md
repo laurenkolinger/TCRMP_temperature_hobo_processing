@@ -55,14 +55,15 @@ SCRIPTED_OUTPUTS/
 │       ├── 01_HOBO_OUT/        # Raw HOBO data files
 │       ├── 02_PLOTS/           # QC visualization plots
 │       │   ├── pretrimmed/     # Plots before trimming
-│       │   ├── posttrimmed/    # Plots after trimming
+│       │   ├── posttrimmed/    # Plots after trimming (with trim boundaries)
 │       │   └── ready/          # Final plots
 │       ├── 03_TRIMMED_CSVS/    # Data trimmed to deployment dates
 │       ├── 04_TOREVIEW/        # Files flagged for manual review
 │       ├── 05_READY/           # Processed, QC-passed data
 │       ├── 06_NETCDF/          # Final NetCDF files
-│       ├── 07_METADATA/        # DATASET and DETAILS files
-│       ├── deployment_logs/    # Deployment metadata
+│       ├── 07_METADATA/        # Metadata files
+│       │   ├── processing_logs/# JSON processing logs per site/deployment
+│       │   └── needs_review/   # Review tracking
 │       └── config_snapshots/   # Configuration backups
 ```
 
@@ -210,7 +211,8 @@ source temp_monitoring_env/bin/activate  # macOS/Linux
 python3 src/TRIM_PLOT.py          # Trims data to deployment periods
 python3 src/AVERAGING.py          # Averages duplicates, flags issues (exports CSVs if configured)
 python3 src/NCPLOT.py             # Generates NetCDF and plots (exports if configured)
-python3 src/GENERATE_METADATA.py  # Creates DATASET files (exports if configured)
+python3 src/GENERATE_METADATA.py  # Creates DATASET files and manifest (exports if configured)
+python3 src/COMBINE_DATASETS.py   # Appends new data to long-term combined datasets
 
 # 7. Review outputs
 # Check 04_TOREVIEW for flagged files (NEVER exported)
@@ -293,12 +295,14 @@ By default, all export paths are blank (empty strings), which means files stay o
 'EXPORT_NETCDF_PATH': '',
 'EXPORT_METADATA_PATH': '',
 'EXPORT_PLOT_PATH': '',
+'EXPORT_COMBINED_PATH': '',
 
 # For production runs, use relative paths (../ = parent directory):
 'EXPORT_READY_PATH': '../TCRMP_temperature_database_csv',
 'EXPORT_NETCDF_PATH': '../TCRMP_temperature_database_nc',
 'EXPORT_METADATA_PATH': '../TCRMP_temperature_database_metadata',
 'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plot',
+'EXPORT_COMBINED_PATH': '../TCRMP_temperature_database_combined',
 
 # Or use absolute paths:
 'EXPORT_READY_PATH': '/full/path/to/TCRMP_temperature_database_csv',
@@ -310,10 +314,8 @@ All exports are organized into subfolders by site location name (from metadata C
 TCRMP_temperature_database_csv/
   Black_Point/
     BT_TCBKPT_2410_2503.csv
-  Buck_Island_STT/
-    BT_TCBKIT_2410_2503.csv
 
-TCRMP_temperature_nc/
+TCRMP_temperature_database_nc/
   Black_Point/
     BT_TCBKPT_2410_2503.nc
 
@@ -321,9 +323,16 @@ TCRMP_temperature_database_plot/
   Black_Point/
     BT_TCBKPT_2410_2503_plot.png
 
-TCRMP_temperature_metadata/
-  Black_Point/
-    DATASET_BT_TCBKPT_2410_2503.txt
+TCRMP_temperature_database_metadata/
+  perSite/                              # DATASET files organized by site
+    Black_Point/
+      DATASET_BT_TCBKPT_2410_2503.txt
+  perRun/                               # Per-processing-run files
+    2025_manifest.csv                   # Manifest of all processed files
+    config_snapshot_20260403_114500.json # Config snapshot at time of setup
+
+TCRMP_temperature_database_combined/
+  TCRMP_temp_Black_Point_raw.csv        # Long-term combined dataset
 ```
 
 **Critical QC Policy:**
@@ -405,13 +414,13 @@ ls ../SCRIPTED_OUTPUTS/[your_year]/[monitoring_type]/
 You should see:
 
 * `01_HOBO_OUT/`
-* `02_PLOTS/` (with subdirectories)
+* `02_PLOTS/` (with `pretrimmed/`, `posttrimmed/`, `ready/`)
 * `03_TRIMMED_CSVS/`
 * `04_TOREVIEW/`
 * `05_READY/`
 * `06_NETCDF/`
+* `07_METADATA/` (with `processing_logs/`, `needs_review/`)
 * `config_snapshots/`
-* `deployment_logs/`
 
 
 ---
@@ -701,7 +710,7 @@ python3 src/NCPLOT.py
 
 * `02_PLOTS/ready/` - Final publication-quality plots
 * `06_NETCDF/` - NetCDF files for archiving
-* `TCRMP_temperature_nc/` - NetCDF files organized by site
+* `TCRMP_temperature_database_nc/` - NetCDF files organized by site (if `EXPORT_NETCDF_PATH` configured)
 
 **NetCDF Metadata Includes:**
 
@@ -726,10 +735,10 @@ Found 2 CSV files.
 📥 Reading CSV for site: TCBKIT
 Processing site: TCBKPT
 Saved: .../06_NETCDF/BT_TCBKPT_2410_2503.nc
-Saved: .../TCRMP_temperature_nc/Black_Point/BT_TCBKPT_2410_2503.nc
+Saved: .../TCRMP_temperature_database_nc/Black_Point/BT_TCBKPT_2410_2503.nc
 Processing site: TCBKIT
 Saved: .../06_NETCDF/BT_TCBKIT_2410_2503.nc
-Saved: .../TCRMP_temperature_nc/Buck_Island_STT/BT_TCBKIT_2410_2503.nc
+Saved: .../TCRMP_temperature_database_nc/Buck_Island_STT/BT_TCBKIT_2410_2503.nc
 ```
 
 
@@ -737,17 +746,18 @@ Saved: .../TCRMP_temperature_nc/Buck_Island_STT/BT_TCBKIT_2410_2503.nc
 
 #### 4.6 Script 4: GENERATE_METADATA.py
 
-**Purpose**: Automatically generate DATASET and DETAILS metadata files for database integration.
+**Purpose**: Automatically generate DATASET metadata files, a processing manifest, and export to database integration folders.
 
    ```bash 
 python3 src/GENERATE_METADATA.py
 ```
 
 **Input:**
-- Files in `05_READY/`
+- Processing logs from `07_METADATA/processing_logs/`
 - Details files from `01_HOBO_OUT/`
 - Site metadata YAML files (`SCRIPTED_WORKFLOW/Site_Metadata/`)
-- Deployment log (`Temperature_UVI_deployment_log.csv`)
+- Files in `05_READY/` (for date ranges)
+- Files in `04_TOREVIEW/` (for flagged status in manifest)
 - Template file (`misc/templates/DATASET-BT_Template.txt`)
 
 **Process:**
@@ -786,13 +796,20 @@ Any information already available in metadata files will be used automatically.
 
 **Output:**
 - `07_METADATA/DATASET_*.txt` - DATASET description files
-- `07_METADATA/DETAILS_*.txt` - Renamed Details files
+- If `EXPORT_METADATA_PATH` configured:
+  - `perSite/{Location}/DATASET_*.txt` - DATASET files organized by site
+  - `perRun/{YEAR}_manifest.csv` - Manifest CSV listing all deployments
 
 **Files Generated:**
 For each processed dataset (e.g., `BT_TCBKPT_2410_2503.csv`):
 - `DATASET_BT_TCBKPT_2410_2503.txt` - Complete metadata description
-- `DETAILS_BT_TCBKPT_2410_a.txt` - First logger details
-- `DETAILS_BT_TCBKPT_2410_b.txt` - Second logger details (if duplicate)
+
+**Manifest CSV** (`{YEAR}_manifest.csv`):
+Lists all deployments with columns:
+- `ID` - Final output filename
+- `Start Date` - Deployment start date
+- `End Date` - Deployment end date
+- `Flagged` - `True` if the site has files in `04_TOREVIEW/`, blank otherwise
 
 **What to Check:**
 - Verify all CSV files have corresponding DATASET files
@@ -839,6 +856,72 @@ The generated DATASET file includes:
 
 ---
 
+#### 4.7 Script 5: COMBINE_DATASETS.py
+
+**Purpose**: Append newly processed data from `05_READY/` to long-term combined datasets.
+
+```bash
+python3 src/COMBINE_DATASETS.py
+```
+
+**Input:**
+- Files in `05_READY/`
+- Existing combined CSVs in `TCRMP_temperature_database_combined/`
+- Site metadata CSV (`TCRMP_TempSiteMetadata.csv`) for mapping site codes to location names
+
+**Process:**
+
+1. **Map Site Codes**
+   - Reads site metadata CSV to map 6-letter codes (e.g., `TCBKPT`) to location names (e.g., `Black_Point`)
+2. **Match to Existing Datasets**
+   - For each READY file, looks for a matching combined file (`TCRMP_temp_{Location}_raw.csv`)
+   - **Skips** sites that have no existing combined file (does not create new ones)
+3. **Append New Data**
+   - Compares datetimes in the READY file against the combined file
+   - Adds only records with datetimes not already present (handles gaps from recovered loggers)
+   - Drops duplicate rows
+4. **Format and Save**
+   - Splits datetime into separate `Date` and `Time` columns
+   - Sorts all data oldest to newest
+   - Saves in `Location,Date,Time,Temperature` format
+
+**Output:**
+- Updated `TCRMP_temp_{Location}_raw.csv` files in `TCRMP_temperature_database_combined/`
+
+**Output Format:**
+```csv
+Location,Date,Time,Temperature
+Black Point,2024-02-14,00:00,26.842
+Black Point,2024-02-14,00:15,26.842
+```
+
+**What to Check:**
+- Console output shows number of new records added per site
+- Sites with no existing combined file are reported as skipped
+- No duplicate records in combined files
+
+**Example Output:**
+```
+Found 37 READY file(s) across 37 site(s)
+Combined output folder: .../TCRMP_temperature_database_combined
+
+Processing: Black_Point (TCBKPT)
+  Existing records: 45000, latest: 2025-03-20 12:00:00
+  BT_TCBKPT_2503_2510.csv: 12500 new records
+  Total new records to add: 12500
+  Updated! Total records: 57500, latest: 2025-10-15 09:30:00
+
+Processing: College_Shoal_East (TCCLGE)
+  No existing combined file, skipping.
+
+Done! Processed 35 sites, skipped 2 sites.
+```
+
+**Note:** This script only adds to existing combined datasets. If a site needs a new combined file, it must be created manually or through a separate initialization process.
+
+
+---
+
 ### Step 5: Final Export
 
 **Purpose**: Export QC-passed data to external locations for database integration and archiving.
@@ -849,18 +932,18 @@ If export paths are configured in `config.py` (Step 1.4), final files are automa
 
 - **AVERAGING.py** exports CSV files from `05_READY/`
 - **NCPLOT.py** exports NetCDF files from `06_NETCDF/` and plots from `02_PLOTS/ready/`
-- **GENERATE_METADATA.py** exports DATASET files from `07_METADATA/`
+- **GENERATE_METADATA.py** exports DATASET files to `perSite/` subfolders, and generates a manifest CSV in `perRun/`
+- **setup.py** exports a config snapshot to `perRun/`
+- **COMBINE_DATASETS.py** appends new data to long-term combined CSVs
 
 **All exports are organized by site location name into subfolders:**
 
 ```
-../TCRMP_temperature_database/
+../TCRMP_temperature_database_csv/
   Black_Point/
     BT_TCBKPT_2410_2503.csv
-  Buck_Island_STT/
-    BT_TCBKIT_2410_2503.csv
 
-../TCRMP_temperature_nc/
+../TCRMP_temperature_database_nc/
   Black_Point/
     BT_TCBKPT_2410_2503.nc
 
@@ -868,9 +951,16 @@ If export paths are configured in `config.py` (Step 1.4), final files are automa
   Black_Point/
     BT_TCBKPT_2410_2503_plot.png
 
-../TCRMP_temperature_metadata/
-  Black_Point/
-    DATASET_BT_TCBKPT_2410_2503.txt
+../TCRMP_temperature_database_metadata/
+  perSite/
+    Black_Point/
+      DATASET_BT_TCBKPT_2410_2503.txt
+  perRun/
+    2025_manifest.csv
+    config_snapshot_20260403_114500.json
+
+../TCRMP_temperature_database_combined/
+  TCRMP_temp_Black_Point_raw.csv
 ```
 
 #### 5.2 QC-Only Export Policy
@@ -946,6 +1036,8 @@ misc/example_data/
    python3 src/TRIM_PLOT.py
    python3 src/AVERAGING.py
    python3 src/NCPLOT.py
+   python3 src/GENERATE_METADATA.py
+   python3 src/COMBINE_DATASETS.py
    ```
 
 ### Expected Results
@@ -954,6 +1046,7 @@ misc/example_data/
 
 * 3 CSV files trimmed
 * 6 plots created (3 pre, 3 post)
+* Post-trimmed plots show trim boundaries with red dashed lines and trimmed-off data as faint gray lines
 * No errors
 
 **After AVERAGING.py:**
@@ -962,11 +1055,23 @@ misc/example_data/
 * TCBKIT: 1 file passes through
 * 2 files in `05_READY/`
 * 0 files in `04_TOREVIEW/`
+* Flagged files are only sent to `04_TOREVIEW/`, not to `05_READY/`
 
 **After NCPLOT.py:**
 
 * 2 NetCDF files created
 * 2 final plots generated
+
+**After GENERATE_METADATA.py:**
+
+* DATASET files generated for each non-flagged deployment
+* Manifest CSV created listing all deployments with flagged status
+* Flagged deployments skipped (no final filename in processing log)
+
+**After COMBINE_DATASETS.py:**
+
+* New data appended to matching combined datasets
+* Sites without existing combined files are skipped
 
 
 ---
@@ -1139,6 +1244,11 @@ Centralized configuration for all processing scripts.
 | `TEMPERATURE_DIFFERENCE_THRESHOLD` | Max °C difference for duplicate averaging | `0.2` |
 | `DEPLOYMENT_BUFFER_HOURS` | Hours added to trim buffer | `1` |
 | `EXPECTED_TIMEZONE` | Time zone for data | `'GMT-04:00'` |
+| `EXPORT_READY_PATH` | Export destination for QC-passed CSVs | `''` (disabled) |
+| `EXPORT_NETCDF_PATH` | Export destination for NetCDF files | `''` (disabled) |
+| `EXPORT_METADATA_PATH` | Export destination for DATASET files and manifest | `''` (disabled) |
+| `EXPORT_PLOT_PATH` | Export destination for final plots | `''` (disabled) |
+| `EXPORT_COMBINED_PATH` | Long-term combined dataset folder | `''` (disabled) |
 
 **How scripts use it:**
 
@@ -1355,7 +1465,9 @@ TCRMP_temperature_hobo_processing/
 │   │   ├── AVERAGING.py            # Averaging and drift detection
 │   │   ├── NCPLOT.py               # NetCDF conversion
 │   │   ├── GENERATE_METADATA.py    # Metadata generation
+│   │   ├── COMBINE_DATASETS.py     # Append to long-term combined datasets
 │   │   ├── QAQC_HELPER_FUNCTIONS.py # Helper functions
+│   │   ├── processing_logger.py    # Processing log management
 │   │   └── requirements.txt        # Package dependencies
 │   ├── Site_Metadata/              # Site YAML files
 │   │   ├── TCBKPT.yaml
@@ -1371,8 +1483,9 @@ TCRMP_temperature_hobo_processing/
 │           ├── 04_TOREVIEW/        # Flagged files
 │           ├── 05_READY/           # QC-passed files
 │           ├── 06_NETCDF/          # NetCDF outputs
-│           ├── 07_METADATA/        # DATASET and DETAILS files
-│           ├── deployment_logs/    # Deployment metadata
+│           ├── 07_METADATA/        # Metadata files
+│           │   ├── processing_logs/# JSON logs per site/deployment
+│           │   └── needs_review/   # Review tracking
 │           └── config_snapshots/   # Configuration backups
 ├── misc/                           # Miscellaneous files
 │   ├── example_data/               # Example test data

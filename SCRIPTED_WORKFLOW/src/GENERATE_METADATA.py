@@ -32,6 +32,7 @@ from QAQC_HELPER_FUNCTIONS import get_location_from_code
 
 hobo_out_folder = get_path_for("01_HOBO_OUT")
 ready_folder = get_path_for("05_READY")
+review_folder = get_path_for("04_TOREVIEW")
 metadata_output = get_path_for("07_METADATA")
 log_dir = get_path_for("07_METADATA/processing_logs")
 site_metadata_folder = os.path.join(CONFIG['WORKFLOW_DIRECTORY'], CONFIG['SITE_METADATA_FOLDER'])
@@ -353,6 +354,76 @@ def generate_dataset_file(log_data):
     
     return True
 
+def generate_manifest():
+    """
+    Generate a manifest CSV listing all deployments with ID, dates, and flagged status.
+    Saves to the perRun subfolder of the metadata export path.
+    """
+    year = CONFIG['YEARS'][0]
+
+    # Build set of site codes that appear in TO_REVIEW folder
+    review_files = glob.glob(os.path.join(review_folder, "*.csv"))
+    flagged_site_codes = set()
+    for f in review_files:
+        basename = os.path.basename(f)
+        match = re.match(r'(?:PD_)?BT_([A-Z]+\d*)_', basename)
+        if match:
+            flagged_site_codes.add(match.group(1))
+
+    # Iterate all processing logs
+    log_files = glob.glob(os.path.join(log_dir, "*.json"))
+    rows = []
+
+    for log_file in log_files:
+        with open(log_file, 'r') as f:
+            log_data = json.load(f)
+
+        site_code = log_data["site_code"]
+        final_filename = log_data.get("final_filename")
+
+        # Determine ID and CSV path for reading dates
+        if final_filename:
+            file_id = final_filename
+            csv_path = os.path.join(ready_folder, final_filename)
+        else:
+            # Flagged file — construct ID from site code and start period
+            file_id = f"BT_{site_code}_{log_data['start_yymm']}"
+            # Try to find the review copy for dates
+            review_matches = glob.glob(os.path.join(review_folder, f"PD_BT_{site_code}_*.csv"))
+            csv_path = review_matches[0] if review_matches else None
+
+        # Read start/end dates from CSV
+        start_date, end_date = None, None
+        if csv_path and os.path.exists(csv_path):
+            start_date, end_date = read_csv_dates(csv_path)
+
+        flagged = site_code in flagged_site_codes
+
+        rows.append({
+            'ID': file_id,
+            'Start Date': start_date or 'Unknown',
+            'End Date': end_date or 'Unknown',
+            'Flagged': 'True' if flagged else ''
+        })
+
+    manifest_df = pd.DataFrame(rows)
+
+    # Save to perRun export folder
+    export_metadata_path = resolve_path(CONFIG.get('EXPORT_METADATA_PATH', ''))
+    if export_metadata_path and os.path.exists(export_metadata_path):
+        perrun_dir = os.path.join(export_metadata_path, "perRun")
+        os.makedirs(perrun_dir, exist_ok=True)
+        manifest_path = os.path.join(perrun_dir, f"{year}_manifest.csv")
+        manifest_df.to_csv(manifest_path, index=False)
+        print(f"[OK] Manifest saved: {manifest_path}")
+    else:
+        # Fallback: save to local metadata folder
+        manifest_path = os.path.join(metadata_output, f"{year}_manifest.csv")
+        manifest_df.to_csv(manifest_path, index=False)
+        print(f"[OK] Manifest saved locally: {manifest_path}")
+
+    return manifest_df
+
 def main():
     """Main function to generate all metadata files."""
     print("\n" + "="*60)
@@ -391,7 +462,10 @@ def main():
     print(f"COMPLETE: Generated {success_count} DATASET file(s)")
     print(f"Output directory: {metadata_output}")
     print(f"{'='*60}\n")
-    
+
+    # Generate manifest CSV
+    generate_manifest()
+
     # Export metadata files to external location if configured
     export_path = resolve_path(CONFIG.get('EXPORT_METADATA_PATH', ''))
     if export_path and os.path.exists(export_path):
@@ -410,7 +484,7 @@ def main():
                 site_code = match.group(1)
                 # Get full location name for folder
                 location_name = get_location_from_code(site_code)
-                site_metadata_folder = os.path.join(export_path, location_name)
+                site_metadata_folder = os.path.join(export_path, "perSite", location_name)
                 os.makedirs(site_metadata_folder, exist_ok=True)
                 
                 dest_path = os.path.join(site_metadata_folder, basename)

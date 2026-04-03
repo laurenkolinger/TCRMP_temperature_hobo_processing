@@ -183,7 +183,7 @@ for site_code in df_files:
         # Set final filename if file was saved (not flagged)
         if not was_flagged:
             # Try to find the output file
-            output_pattern = os.path.join(output_folder, f"BT_{site_code}_{start_yymm}_*.csv")
+            output_pattern = os.path.join(output_folder, f"BT_{site_code}_*.csv")
             import glob
             output_files = glob.glob(output_pattern)
             if output_files:

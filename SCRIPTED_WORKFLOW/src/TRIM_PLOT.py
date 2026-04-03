@@ -101,6 +101,14 @@ format_deployment_datetimes(deployment_data_dict)
 # 16. Plot pre-trimmed data for QC and save
 plot_pre_trimmed(df_files, panama_codes, pretrimmed_path)
 
+# 16b. Capture full pre-trimmed data before trimming
+pre_trim_data = {}
+for site_code, site_data in df_files.items():
+    for file_number, file_data in site_data.items():
+        for file_identifier, file_info in file_data.items():
+            key = (site_code, file_number, file_identifier)
+            pre_trim_data[key] = file_info['DataFrame'].copy()
+
 # 17. Parse deployment datetime strings back into datetime objects (after formatting)
 parse_deployment_datetime_strings(deployment_data_dict)
 
@@ -114,7 +122,7 @@ final_trim_dataframe_edges(df_files)
 check_data_lengths(df_files)
 
 # 21. Plot post-trimmed data for QC and save
-plot_post_trimmed(df_files, panama_codes, posttrimmed_path)
+plot_post_trimmed(df_files, panama_codes, posttrimmed_path, pre_trim_data=pre_trim_data)
 
 # 22. export trimmed files
 export_trimmed_csvs(df_files, trimmed_csv)
