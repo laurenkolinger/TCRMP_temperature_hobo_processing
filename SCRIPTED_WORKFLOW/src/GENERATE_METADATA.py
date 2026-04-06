@@ -360,6 +360,7 @@ def generate_manifest():
     Saves to the perRun subfolder of the metadata export path.
     """
     year = CONFIG['YEARS'][0]
+    monitoring_type = CONFIG['MONITORING_TYPES'][0]
 
     # Build set of site codes that appear in TO_REVIEW folder
     review_files = glob.glob(os.path.join(review_folder, "*.csv"))
@@ -413,12 +414,12 @@ def generate_manifest():
     if export_metadata_path and os.path.exists(export_metadata_path):
         perrun_dir = os.path.join(export_metadata_path, "perRun")
         os.makedirs(perrun_dir, exist_ok=True)
-        manifest_path = os.path.join(perrun_dir, f"{year}_manifest.csv")
+        manifest_path = os.path.join(perrun_dir, f"{year}_{monitoring_type}_manifest.csv")
         manifest_df.to_csv(manifest_path, index=False)
         print(f"[OK] Manifest saved: {manifest_path}")
     else:
         # Fallback: save to local metadata folder
-        manifest_path = os.path.join(metadata_output, f"{year}_manifest.csv")
+        manifest_path = os.path.join(metadata_output, f"{year}_{monitoring_type}_manifest.csv")
         manifest_df.to_csv(manifest_path, index=False)
         print(f"[OK] Manifest saved locally: {manifest_path}")
 

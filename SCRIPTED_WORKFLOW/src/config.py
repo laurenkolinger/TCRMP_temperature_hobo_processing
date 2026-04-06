@@ -57,7 +57,7 @@ CONFIG = {
         # Export paths for final outputs (relative to BASE_DIRECTORY parent, or use absolute paths)
     
     # Leave blank ('') for test runs - files stay in SCRIPTED_OUTPUTS only
-    'EXPORT_READY_PATH': '',  # Final CSV files from 05_READY/
+    #'EXPORT_READY_PATH': '',  # Final CSV files from 05_READY/
     #'EXPORT_NETCDF_PATH': '',  # NetCDF files from 06_NETCDF/
     #'EXPORT_METADATA_PATH': '',  # DATASET files from 07_METADATA/
     'EXPORT_PLOT_PATH': '',  # Final plots from 02_PLOTS/ready/
@@ -69,7 +69,7 @@ CONFIG = {
     # 'EXPORT_PLOT_PATH': 'misc/test_exports/TCRMP_temperature_database_plot',
 
     # FOR PRODUCTION - sibling folders to TCRMP_temperature_hobo_processing:
-    # 'EXPORT_READY_PATH': '../TCRMP_temperature_database_csv',
+    'EXPORT_READY_PATH': '../TCRMP_temperature_database_csv',
     'EXPORT_NETCDF_PATH': '../TCRMP_temperature_database_nc',
     'EXPORT_METADATA_PATH': '../TCRMP_temperature_database_metadata',
     # 'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plot',
