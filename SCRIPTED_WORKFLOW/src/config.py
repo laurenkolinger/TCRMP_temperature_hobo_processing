@@ -60,7 +60,7 @@ CONFIG = {
     #'EXPORT_READY_PATH': '',  # Final CSV files from 05_READY/
     #'EXPORT_NETCDF_PATH': '',  # NetCDF files from 06_NETCDF/
     #'EXPORT_METADATA_PATH': '',  # DATASET files from 07_METADATA/
-    'EXPORT_PLOT_PATH': '',  # Final plots from 02_PLOTS/ready/
+    #'EXPORT_PLOT_PATH': '',  # Final plots from 02_PLOTS/ready/
     
     # FOR TESTING - example using misc/test_exports:
     # 'EXPORT_READY_PATH': 'misc/test_exports/TCRMP_temperature_database_csv',
@@ -72,7 +72,7 @@ CONFIG = {
     'EXPORT_READY_PATH': '../TCRMP_temperature_database_csv',
     'EXPORT_NETCDF_PATH': '../TCRMP_temperature_database_nc',
     'EXPORT_METADATA_PATH': '../TCRMP_temperature_database_metadata',
-    # 'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plot',
+    'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plot',
     'EXPORT_COMBINED_PATH': '../TCRMP_temperature_database_combined',  # Long-term combined CSVs
     
     # Virtual environment
