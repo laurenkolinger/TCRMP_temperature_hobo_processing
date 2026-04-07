@@ -115,14 +115,23 @@ class FrameworkSetup:
         if export_metadata_path and os.path.exists(export_metadata_path):
             perrun_dir = os.path.join(export_metadata_path, "perRun")
             os.makedirs(perrun_dir, exist_ok=True)
-            export_file = os.path.join(perrun_dir, f'config_snapshot_{timestamp}.json')
+
+            years_str = "-".join(map(str, self.config['YEARS']))
+            types_str = "-".join(self.config['MONITORING_TYPES'])
+
+            export_file = os.path.join(
+                perrun_dir,
+                f'{years_str}_{types_str}_config_snapshot_{timestamp}.json'
+            )
+
             with open(export_file, 'w') as f:
                 json.dump(config_snapshot, f, indent=2)
+
             json_files.append(export_file)
             print(f"Config snapshot exported to: {export_file}")
 
         return json_files
-    
+            
     def run_setup(self):
         print("Temperature Monitoring Framework - Setup")
         print("=" * 40)
