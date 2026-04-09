@@ -72,7 +72,7 @@ CONFIG = {
     'EXPORT_READY_PATH': '../TCRMP_temperature_database_csv',
     'EXPORT_NETCDF_PATH': '../TCRMP_temperature_database_nc',
     'EXPORT_METADATA_PATH': '../TCRMP_temperature_database_metadata',
-    'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plot',
+    'EXPORT_PLOT_PATH': '../TCRMP_temperature_database_plots',
     'EXPORT_COMBINED_PATH': '../TCRMP_temperature_database_combined',  # Long-term combined CSVs
     
     # Virtual environment
